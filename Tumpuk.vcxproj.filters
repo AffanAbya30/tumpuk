@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files"><UniqueIdentifier>{21482447-A583-421D-A565-4B1A75059287}</UniqueIdentifier></Filter>
+    <Filter Include="Header Files"><UniqueIdentifier>{3FC77BD6-A625-4FC6-8A9C-1F0559D8C5AB}</UniqueIdentifier></Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\app.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\main_win32.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClInclude Include="src\app.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\game.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\gl_api.hpp"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\runtime_paths.hpp"><Filter>Header Files</Filter></ClInclude>
+  </ItemGroup>
+</Project>

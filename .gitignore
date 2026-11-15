@@ -1,0 +1,30 @@
+# Compiler and IDE output
+.vs/
+.vscode/
+build/
+build-*/
+dist/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.obj
+*.o
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.idb
+*.log
+*.tlog/
+*.vcxproj.user
+*.suo
+*.user
+# Local progress
+score.txt
+# OS
+.DS_Store
+Thumbs.db
+# Python
+__pycache__/
+*.pyc
