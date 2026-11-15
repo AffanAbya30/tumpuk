@@ -16,11 +16,17 @@ struct Color { float r, g, b, a = 1; };
 constexpr Color color(unsigned int rgb, float a = 1) {
     return {((rgb >> 16) & 255) / 255.0f, ((rgb >> 8) & 255) / 255.0f, (rgb & 255) / 255.0f, a};
 }
-constexpr Color paper = color(0xF1F1FA), muted = color(0xADB3CB);
-constexpr Color dim = color(0x7D87A6), mint = color(0x81E6CD);
-constexpr Color ink = color(0x0F1727), border = color(0x333C57);
-constexpr Color panel = color(0x1A2137), violet = color(0xB8A8FF);
-constexpr Color blush = color(0xFFA99D);
+constexpr Color paper  = color(0xF4F6FC);           // teks utama putih bersih
+constexpr Color dim    = color(0x8A96B2);           // teks sekunder slate lembut
+constexpr Color ink    = color(0x0C121E);           // teks gelap di atas tombol primary
+constexpr Color border = color(0x28344A);           // border kartu / tombol
+constexpr Color panel  = color(0x131A27);           // surface panel / modal
+constexpr Color surface= color(0x172030);           // surface tombol secondary
+constexpr Color surfaceHover = color(0x222E44);     // hover tombol secondary
+constexpr Color accent = color(0x7CE3C8);           // pastel mint (Primary CTA)
+constexpr Color accentHover = color(0x9BF0DA);      // hover tombol primary
+constexpr Color violet = color(0xB8ACFF);           // pastel lavender (secondary accent)
+constexpr Color danger = color(0xFCA5A5);           // soft coral pastel (notifikasi cut)
 constexpr float pi = 3.14159265f;
 GLuint fontTex = 0;
 
@@ -51,30 +57,12 @@ void roundRect(float x, float y, float w, float h, float r, Color c) {
     glVertex2f(x+w-r,y);
     glEnd();
 }
-void card(float x,float y,float w,float h,float radius,Color fill=panel,Color stroke=border) {
-    roundRect(x,y,w,h,radius,stroke);
-    roundRect(x+1,y+1,w-2,h-2,radius-1,fill);
-}
-void glow(float x,float y,float rx,float ry,Color c) {
-    glBegin(GL_TRIANGLE_FAN);
-    shade(c); glVertex2f(x,y);
-    shade(fade(c,0));
-    for (int i=0;i<=64;++i) {
-        const float a=2*pi*i/64;
-        glVertex2f(x+rx*std::cos(a),y+ry*std::sin(a));
-    }
-    glEnd();
-}
+
 void gradient() {
     glBegin(GL_QUADS);
-    shade(color(0x12192D)); glVertex2f(0,0); glVertex2f(screenW,0);
-    shade(color(0x131324)); glVertex2f(screenW,screenH); glVertex2f(0,screenH);
+    shade(color(0x0E1320)); glVertex2f(0,0); glVertex2f(screenW,0);
+    shade(color(0x090D16)); glVertex2f(screenW,screenH); glVertex2f(0,screenH);
     glEnd();
-    glow(886,347,576,374,color(0x6554AA,0.27f));
-    glow(997,585,363,157,color(0x534A8C,0.20f));
-    for (int x=528;x<1234;x+=31)
-        for (int y=118;y<645;y+=31)
-            rect(static_cast<float>(x),static_cast<float>(y),1.5f,1.5f,color(0xA2A2C4,0.12f));
 }
 
 int glyph(unsigned char ch, bool bold) {
@@ -122,10 +110,6 @@ std::string fitText(std::string value,float size,float width,bool bold=false) {
     while (!value.empty() && textWidth(value+"...",size,bold)>width) value.pop_back();
     return value+"...";
 }
-void keycap(float x,float y,float width,std::string_view key) {
-    card(x,y,width,26,7,color(0x242D45));
-    center(x+width/2,y+18,key,11,muted,true);
-}
 
 constexpr std::array<Color,12> palette{
     color(0x696897),color(0x8C83D3),color(0x9C91E5),color(0xBAA1ED),
@@ -167,11 +151,11 @@ void footprint(const Block& b) {
     glEnd();
 }
 void baseGrid() {
-    quad3(color(0x21263C),-4.0f,-0.015f,-4.0f,4.0f,-0.015f,-4.0f,
+    quad3(color(0x1B2338),-4.0f,-0.015f,-4.0f,4.0f,-0.015f,-4.0f,
           4.0f,-0.015f,4.0f,-4.0f,-0.015f,4.0f);
     for(int i=-6;i<=6;++i) {
         const float a=i*0.65f;
-        shade(color(0x7984A7,i==0?0.46f:0.22f));
+        shade(color(0x6878A0,i==0?0.48f:0.22f));
         glBegin(GL_LINES);
         glVertex3f(a,0,-4.0f); glVertex3f(a,0,4.0f);
         glVertex3f(-4.0f,0,a); glVertex3f(4.0f,0,a);
@@ -189,7 +173,6 @@ void beginScene(float x,float y,float size,float camera,float time,bool preview)
 }
 void endScene() { glDisable(GL_DEPTH_TEST); glPopMatrix(); }
 void towerPreview(float time) {
-    glow(875,504,348,107,color(0xA393E4,0.21f));
     beginScene(872,460,58,0,time,true);
     baseGrid();
     constexpr std::array<float,10> widths{3.9f,3.8f,3.5f,3.3f,3.16f,2.94f,2.72f,2.72f,2.43f,2.43f};
@@ -200,7 +183,6 @@ void towerPreview(float time) {
     endScene();
 }
 void towerLive(const Round& r) {
-    glow(835,508,332,122,color(0xA393E4,0.19f));
     beginScene(836,449,57,r.camera,0,false);
     if (r.camera<4.3f) baseGrid();
     for (const auto& b:r.tower) if (b.y>=r.camera-6.0f) cuboid(b);
@@ -212,9 +194,10 @@ void towerLive(const Round& r) {
     endScene();
 }
 void brandMark(float x,float y) {
-    roundRect(x,y,36,36,9,color(0x263149));
-    for(int i=0;i<3;++i)
-        roundRect(x+8+i*2.0f,y+22-i*6.0f,20-i*4.0f,4,1.6f,i==2?mint:violet);
+    // 3 blok bertumpuk selaras palet balok (slate purple -> lavender -> mint)
+    roundRect(x,    y+24, 24, 5, 1.5f, color(0x696897));
+    roundRect(x+4,  y+16, 16, 5, 1.5f, violet);
+    roundRect(x+8,  y+8,  8,  5, 1.5f, accent);
 }
 std::string trim(std::string s) {
     constexpr auto whitespace = " \t\r\n";
@@ -362,134 +345,111 @@ void App::update(float dt) {
     if(screen_==Screen::Playing||screen_==Screen::Result) round_.update(dt);
 }
 
+Color toneColor(BtnTone tone) {
+    switch(tone) {
+    case BtnTone::Mint:     return color(0x82DFC6); // pastel mint (balok 10)
+    case BtnTone::Lavender: return color(0xB8ACFF); // pastel lavender (balok 3)
+    case BtnTone::Peach:    return color(0xF6B2BE); // pastel peach/rose (balok 6)
+    case BtnTone::Cyan:     return color(0x91CCDA); // pastel sky cyan (balok 11)
+    case BtnTone::Sage:     return color(0xCEDCB2); // pastel sage green (balok 9)
+    }
+    return color(0x82DFC6);
+}
+
 void App::button(float x,float y,float w,float h,Action a,const std::string& s,
-                 bool primary,const std::string& hotkey) {
+                 BtnTone tone,const std::string& hotkey) {
     buttons_.push_back({x,y,w,h,a});
     const bool hover=mouseX_>=x&&mouseX_<=x+w&&mouseY_>=y&&mouseY_<=y+h;
-    if(primary) {
-        roundRect(x,y,w,h,12,hover?color(0xA0F5DF):mint);
-        text(x+19,y+h*0.5f+6,s,17,ink,true);
-    } else {
-        card(x,y,w,h,12,hover?color(0x313A55):color(0x222A42),hover?color(0x7985A9):border);
-        text(x+19,y+h*0.5f+6,s,16,paper,true);
-    }
+    const Color c = toneColor(tone);
+    const Color bg = hover ? tint(c, 1.12f) : c;
+    roundRect(x,y,w,h,7,bg);
+    text(x+18,y+h*0.5f+6,s,16,ink,true);
     if(!hotkey.empty()) {
-        const float capW=std::max(28.0f,textWidth(hotkey,10,true)+15);
-        const Color cap=primary?color(0x183738,0.14f):color(0x455070,0.66f);
-        roundRect(x+w-capW-13,y+(h-23)/2,capW,23,6,cap);
-        center(x+w-capW*0.5f-13,y+h*0.5f+4,hotkey,10,primary?ink:muted,true);
+        const float capW=std::max(26.0f,textWidth(hotkey,9,true)+12);
+        const Color cap=color(0x0C121E,0.18f);
+        roundRect(x+w-capW-12,y+(h-20)/2,capW,20,4,cap);
+        center(x+w-capW*0.5f-12,y+h*0.5f+3,hotkey,9,ink,true);
     }
 }
 void App::header() {
-    brandMark(54,26);
-    text(103,50,"TUMPUK",20,paper,true,1.5f);
-    rect(54,86,1172,1,border);
-    if(screen_==Screen::Playing) button(1090,23,136,45,Action::Pause,"Jeda",false,"ESC");
-    else {
-        card(1082,29,144,30,8,color(0x1C273B));
-        roundRect(1094,40,7,7,3.5f,mint);
-        text(1109,49,"PC / OFFLINE",11,muted,true,1.25f);
-    }
+    brandMark(54,28);
+    text(90,50,"TUMPUK",18,paper,true,2.0f);
+    if(screen_==Screen::Playing) button(1140,24,96,40,Action::Pause,"Jeda",BtnTone::Cyan,"ESC");
 }
 void App::footer() {
-    rect(54,658,1172,1,border);
-    label(54,688,"PROYEK KOMPUTER GRAFIS");
-    const std::string_view end="3D ISOMETRIK  /  VERSI 1.0";
-    text(1226-textWidth(end,11,true,1.25f),688,end,11,dim,true,1.25f);
+    // Tanpa garis pembatas apapun di bagian bawah
+    text(54,683,"Proyek Komputer Grafis",11,dim);
 }
 void App::menu() {
     towerPreview(time_);
-    roundRect(54,154,34,3,1.5f,mint);
-    label(99,161,"GAME ARCADE 3D",mint);
-    text(48,254,"TUMPUK",94,paper,true,-2);
-    text(56,302,"Susun setinggi mungkin.",25,violet,true);
-    text(56,345,"Jatuhkan balok saat sejajar. Bagian yang",17,muted);
-    text(56,371,"meleset akan terpotong dan jatuh.",17,muted);
-    button(54,410,334,53,Action::Play,"Mulai",true,"ENTER");
-    button(54,476,334,49,Action::Credits,"Credits",false,"C");
-    button(54,536,334,49,Action::Exit,"Keluar",false,"ESC");
-    center(872,616,"SATU BALOK. SATU KESEMPATAN.",12,muted,true);
+    text(82,268,"TUMPUK",94,paper,true,-2);
+    text(88,310,"Susun setinggi mungkin.",20,violet);
+    text(88,344,"Jatuhkan balok saat posisi sejajar.",14,dim);
+    button(88,384,284,48,Action::Play,"Mulai",BtnTone::Mint,"ENTER");
+    button(88,444,284,44,Action::Credits,"Credits",BtnTone::Lavender,"C");
+    button(88,500,284,44,Action::Exit,"Keluar",BtnTone::Peach,"ESC");
 }
 void App::gameplay() {
     towerLive(round_);
-    label(54,133,"RUN BERJALAN",mint);
-    card(54,156,332,204,18,color(0x202942));
-    label(76,190,"SKOR");
-    text(73,270,std::to_string(round_.score),79,paper,true);
-    rect(76,294,288,1,border);
-    label(76,330,"REKOR",muted);
-    const auto score=std::to_string(best_);
-    text(364-textWidth(score,23,true),331,score,23,mint,true);
-    label(54,405,"KONTROL");
-    keycap(54,425,65,"SPACE");
-    text(133,445,"Jatuhkan balok",15,paper);
-    keycap(54,461,65,"KLIK");
-    text(133,481,"Atau klik arena",15,muted);
-    keycap(54,497,65,"P / ESC");
-    text(133,517,"Jeda permainan",15,muted);
-    if(round_.alive) {
-        const bool perfect=round_.lastLand==Land::Perfect;
-        if(round_.notice>0) {
-            const std::string message=perfect
-                ? (round_.combo>=2 ? "PAS!  COMBO x"+std::to_string(round_.combo) : "PAS!")
-                : "TERPOTONG " + std::to_string(static_cast<int>(std::round(round_.cutPercent))) + "%";
-            const float alpha=std::min(1.0f,round_.notice*3.3f);
-            const float w=textWidth(message,15,true)+34;
-            roundRect(836-w/2,113,w,34,10,color(0x242B46,alpha));
-            center(836,136,message,15,fade(perfect?mint:blush,alpha),true);
-        } else {
-            center(836,136,round_.score==0?"TUNGGU HINGGA BALOK SEJAJAR":
-                   (round_.axis==Axis::X?"BALOK BERGERAK DI SUMBU X":"BALOK BERGERAK DI SUMBU Z"),12,muted,true);
-        }
+    // Area skor bersih tepat di tengah vertikal layar (y ~ 360) dengan ukuran lebih besar
+    constexpr float hudX = 230.0f;
+    center(hudX, 390, std::to_string(round_.score), 144, paper, true);
+    const auto bestStr = std::to_string(best_);
+    center(hudX, 430, "best " + bestStr, 22, dim);
+    // Hint kontrol bersih di bawahnya (hanya saat skor masih 0)
+    if(round_.score==0 && round_.alive) {
+        center(hudX, 480, "SPACE  jatuhkan", 12, fade(dim, 0.65f));
+        center(hudX, 504, "P / ESC  jeda", 12, fade(dim, 0.45f));
     }
     if(screen_==Screen::Pause||screen_==Screen::Result) modal();
 }
 void App::modal() {
     if(screen_==Screen::Result && round_.resultTime<0.45f) return;
     buttons_.clear();
-    rect(0,0,screenW,screenH,color(0x080D1B,0.77f));
-    card(405,177,470,366,22,color(0x1B243A),color(0x576487));
+    rect(0,0,screenW,screenH,color(0x070B14,0.85f));
+    roundRect(430,196,420,330,8,panel);
     const bool result=screen_==Screen::Result;
-    center(640,219,result?(round_.score>initialBest_?"REKOR BARU":"RUN SELESAI"):"JEDA",13,mint,true);
-    center(640,280,result?"Menara berhenti":"Permainan dijeda",35,paper,true);
+    const bool newBest=result&&round_.score>initialBest_;
+    center(640,230,result?(newBest?"rekor baru":"selesai"):"jeda",11,newBest?accent:dim,true);
+    center(640,274,result?"Menara berhenti":"Permainan dijeda",28,paper,true);
     if(result) {
-        center(640,326,"Skor " + std::to_string(round_.score) + "  /  Rekor " +
-               std::to_string(best_),21,violet,true);
-        center(640,356,"Combo terbaik: "+std::to_string(round_.longestCombo),15,muted);
+        center(640,314,"Skor "+std::to_string(round_.score)+"   /   Rekor "+std::to_string(best_),16,paper,true);
+        center(640,342,"combo terbaik  "+std::to_string(round_.longestCombo),13,dim);
     } else {
-        center(640,328,"Balok berhenti sampai kamu lanjut.",17,muted);
+        center(640,318,"Balok berhenti sampai kamu lanjut.",14,dim);
     }
-    button(458,389,364,52,result?Action::Retry:Action::Resume,result?"Coba lagi":"Lanjutkan",true,
-           result?"R":"ENTER");
-    button(458,456,364,50,Action::Home,"Menu utama",false,"M");
+    button(466,375,348,48,result?Action::Retry:Action::Resume,
+           result?"Coba lagi":"Lanjutkan",BtnTone::Mint,result?"R":"ENTER");
+    button(466,437,348,46,Action::Home,"Menu utama",BtnTone::Lavender,"M");
 }
 void App::credits() {
-    label(54,140,"TIM PENGEMBANG",mint);
-    text(50,220,"Credits",64,paper,true);
-    text(54,260,"TUMPUK  /  Proyek Komputer Grafis",17,muted);
-    card(54,291,1172,266,17,color(0x1A2137));
-    label(80,327,"NAMA",violet);
-    label(829,327,"NIM",violet);
-    rect(80,341,1118,1,border);
+    text(54,195,"Credits",58,paper,true);
+    text(54,230,"Proyek Komputer Grafis  /  TUMPUK",14,dim);
+    // Tabel dengan panel surface dan border
+    roundRect(54,258,1172,282,8,panel);
+    roundRect(54,258,1172,1,0,border);
+    label(80,296,"NAMA",violet);
+    label(829,296,"NIM",violet);
+    rect(80,308,1118,1,fade(border,0.80f));
     for(std::size_t i=0;i<5&&creditsPage_*5+i<people_.size();++i) {
         const auto& p=people_[creditsPage_*5+i];
-        const float y=369+static_cast<float>(i)*36.0f;
-        text(80,y,fitText(p.name,18,710,true),18,paper,true);
-        text(829,y,fitText(p.nim,16,325),16,muted);
-        if(i<4 && creditsPage_*5+i+1<people_.size()) rect(80,y+12,1118,1,fade(border,0.70f));
+        const float y=336+static_cast<float>(i)*38.0f;
+        text(80,y,fitText(p.name,17,710,true),17,paper,true);
+        text(829,y,fitText(p.nim,15,325),15,dim);
+        if(i<4 && creditsPage_*5+i+1<people_.size()) rect(80,y+14,1118,1,fade(border,0.50f));
     }
-    button(54,580,244,48,Action::Home,"Menu utama",false,"ESC");
+    button(54,564,220,46,Action::Home,"Menu utama",BtnTone::Lavender,"ESC");
     const std::size_t pages=(people_.size()+4)/5;
     if(pages>1) {
-        center(918,610,std::to_string(creditsPage_+1)+" / "+std::to_string(pages),14,muted,true);
-        if(creditsPage_>0) button(730,580,142,48,Action::Previous,"Sebelum",false,"A");
-        if(creditsPage_+1<pages) button(964,580,168,48,Action::Next,"Berikut",false,"D");
+        center(918,592,std::to_string(creditsPage_+1)+" / "+std::to_string(pages),12,dim,true);
+        if(creditsPage_>0) button(730,564,130,46,Action::Previous,"Sebelum",BtnTone::Sage,"A");
+        if(creditsPage_+1<pages) button(952,564,148,46,Action::Next,"Berikut",BtnTone::Cyan,"D");
     }
 }
 void App::render() {
     buttons_.clear();
     glViewport(viewport_.x,viewport_.y,viewport_.w,viewport_.h);
-    glClearColor(0.032f,0.043f,0.080f,1);
+    glClearColor(0.047f,0.059f,0.078f,1);
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
     glOrtho(0,screenW,screenH,0,-6000,6000);

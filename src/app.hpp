@@ -7,6 +7,7 @@
 namespace tumpuk {
 inline constexpr float screenW = 1280, screenH = 720;
 enum class Screen { Menu, Playing, Pause, Result, Credits };
+enum class BtnTone { Mint, Lavender, Peach, Cyan, Sage };
 
 struct Viewport {
     int x, y, w, h;
@@ -41,7 +42,7 @@ private:
     void modal();
     void credits();
     void button(float x, float y, float w, float h, Action action,
-                const std::string& label, bool primary = false, const std::string& hotkey = {});
+                const std::string& label, BtnTone tone = BtnTone::Mint, const std::string& hotkey = {});
     void loadCredits();
     void saveBest() const;
 

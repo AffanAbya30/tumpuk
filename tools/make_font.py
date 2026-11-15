@@ -1,17 +1,19 @@
-"""Regenerate the embedded font atlas (Pillow and DejaVu Sans required)."""
+"""Regenerate the embedded Plus Jakarta Sans font atlas (Pillow required)."""
 from pathlib import Path
 from itertools import groupby
 import sys
 from PIL import Image, ImageDraw, ImageFont
 
-FONT_DIR = Path(sys.argv[1] if len(sys.argv) > 1 else '/usr/share/fonts/truetype/dejavu')
+FONT_FILE = Path(sys.argv[1] if len(sys.argv) > 1 else
+                 Path(__file__).parent / 'fonts' / 'PlusJakartaSans[wght].ttf')
 FONT_SIZE = 76
 WIDTH = HEIGHT = 1024
 image = Image.new('L', (WIDTH, HEIGHT))
 draw = ImageDraw.Draw(image)
 glyphs = []
-for font_file in ['DejaVuSans.ttf', 'DejaVuSans-Bold.ttf']:
-    font = ImageFont.truetype(str(FONT_DIR / font_file), FONT_SIZE)
+for weight in ['Regular', 'Bold']:
+    font = ImageFont.truetype(str(FONT_FILE), FONT_SIZE)
+    font.set_variation_by_name(weight)
     for code in range(32, 127):
         char = chr(code)
         left, top, right, bottom = font.getbbox(char, anchor='ls')
