@@ -34,11 +34,13 @@ private:
     void action(Action action);
     void start();
     void drop();
-    void header();
-    void footer();
+    void resetPreview();
+    void updatePreview(float dt);
     void menu();
     void gameplay();
-    void modal();
+    void landingFeedback();
+    void pause();
+    void result();
     void credits();
     void button(float x, float y, float w, float h, Action action,
                 const std::string& label, bool primary = false, const std::string& hotkey = {});
@@ -50,7 +52,8 @@ private:
     std::vector<Button> buttons_;
     std::size_t creditsPage_ = 0;
     Screen screen_ = Screen::Menu;
-    Round round_;
+    Round round_, preview_;
+    float previewWait_ = 0;
     int best_ = 0, initialBest_ = 0;
     bool exit_ = false;
     float time_ = 0, mouseX_ = -1, mouseY_ = -1;

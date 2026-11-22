@@ -10,24 +10,40 @@
 
 namespace tumpuk {
 namespace {
-#include "font_atlas.inc"
+struct Glyph { int u,v,w,h,left,top,advance; };
+#include "home_font_atlas.inc"
+GLuint fontTex = 0;
 
 struct Color { float r, g, b, a = 1; };
 constexpr Color color(unsigned int rgb, float a = 1) {
     return {((rgb >> 16) & 255) / 255.0f, ((rgb >> 8) & 255) / 255.0f, (rgb & 255) / 255.0f, a};
 }
 constexpr Color paper = color(0xF1F1FA), muted = color(0xADB3CB);
-constexpr Color dim = color(0x7D87A6), mint = color(0x81E6CD);
-constexpr Color ink = color(0x0F1727), border = color(0x333C57);
-constexpr Color panel = color(0x1A2137), violet = color(0xB8A8FF);
+constexpr Color mint = color(0x81E6CD);
+constexpr Color ink = color(0x0F1727), violet = color(0xB8A8FF);
+constexpr Color logoBase = color(0x263149);
 constexpr Color blush = color(0xFFA99D);
 constexpr float pi = 3.14159265f;
-GLuint fontTex = 0;
+constexpr float arenaLeft = 350, arenaX = 802;
+constexpr float homeMargin = 64, homeGutter = 40;
+constexpr float homeContentWidth = screenW-2*homeMargin-homeGutter;
+constexpr float homeArtX = screenW-homeMargin-homeContentWidth*7/24;
+constexpr float previewHold = 1.25f, previewResetTime = 0.75f;
+constexpr float previewTurnRate = 0.45f;
+constexpr int previewLayers = 5;
+constexpr GLdouble floorPlane[]{0,1,0,0};
+
+bool menuTheme(Screen screen) { return screen==Screen::Menu||screen==Screen::Credits; }
 
 void shade(Color c) { glColor4f(c.r,c.g,c.b,c.a); }
 Color fade(Color c, float a) { c.a = a; return c; }
 Color tint(Color c, float factor) {
     return {std::min(1.0f,c.r*factor),std::min(1.0f,c.g*factor),std::min(1.0f,c.b*factor),c.a};
+}
+
+constexpr Color mix(Color from,Color to,float t) {
+    return {from.r+(to.r-from.r)*t,from.g+(to.g-from.g)*t,
+            from.b+(to.b-from.b)*t,from.a+(to.a-from.a)*t};
 }
 
 void rect(float x, float y, float w, float h, Color c) {
@@ -51,9 +67,13 @@ void roundRect(float x, float y, float w, float h, float r, Color c) {
     glVertex2f(x+w-r,y);
     glEnd();
 }
-void card(float x,float y,float w,float h,float radius,Color fill=panel,Color stroke=border) {
-    roundRect(x,y,w,h,radius,stroke);
-    roundRect(x+1,y+1,w-2,h-2,radius-1,fill);
+void blockButton(float x,float y,float w,float h,float depth,Color face) {
+    // The darker lower and right faces give the button the thickness of a block.
+    rect(x,y,w,h,tint(face,0.56f));
+    rect(x,y,w-4,h-depth,face);
+    rect(x,y,w-4,2,tint(face,1.35f));
+    rect(x+w-4,y,4,h-depth,tint(face,0.79f));
+    rect(x+3,y+h-depth+1,w-10,1,tint(face,0.72f));
 }
 void glow(float x,float y,float rx,float ry,Color c) {
     glBegin(GL_TRIANGLE_FAN);
@@ -65,13 +85,15 @@ void glow(float x,float y,float rx,float ry,Color c) {
     }
     glEnd();
 }
-void gradient() {
+void gradient(bool home) {
     glBegin(GL_QUADS);
-    shade(color(0x12192D)); glVertex2f(0,0); glVertex2f(screenW,0);
-    shade(color(0x131324)); glVertex2f(screenW,screenH); glVertex2f(0,screenH);
+    shade(home?tint(logoBase,0.63f):color(0x12192D));
+    glVertex2f(0,0); glVertex2f(screenW,0);
+    shade(home?tint(logoBase,0.45f):color(0x131324));
+    glVertex2f(screenW,screenH); glVertex2f(0,screenH);
     glEnd();
-    glow(886,347,576,374,color(0x6554AA,0.27f));
-    glow(997,585,363,157,color(0x534A8C,0.20f));
+    glow(886,347,576,374,home?fade(violet,0.14f):color(0x6554AA,0.27f));
+    glow(997,585,363,157,home?fade(violet,0.08f):color(0x534A8C,0.20f));
     for (int x=528;x<1234;x+=31)
         for (int y=118;y<645;y+=31)
             rect(static_cast<float>(x),static_cast<float>(y),1.5f,1.5f,color(0xA2A2C4,0.12f));
@@ -114,19 +136,11 @@ void text(float x,float baseline,std::string_view value,float size,Color c=paper
 void center(float x,float y,std::string_view value,float size,Color c=paper,bool bold=false) {
     text(x-textWidth(value,size,bold)*0.5f,y,value,size,c,bold);
 }
-void label(float x,float y,std::string_view value,Color c=dim) {
-    text(x,y,value,12,c,true,1.8f);
-}
 std::string fitText(std::string value,float size,float width,bool bold=false) {
     if (textWidth(value,size,bold)<=width) return value;
     while (!value.empty() && textWidth(value+"...",size,bold)>width) value.pop_back();
     return value+"...";
 }
-void keycap(float x,float y,float width,std::string_view key) {
-    card(x,y,width,26,7,color(0x242D45));
-    center(x+width/2,y+18,key,11,muted,true);
-}
-
 constexpr std::array<Color,12> palette{
     color(0x696897),color(0x8C83D3),color(0x9C91E5),color(0xBAA1ED),
     color(0xD5A5E6),color(0xE9AADB),color(0xF2B8C8),color(0xF9C4AE),
@@ -139,28 +153,50 @@ void quad3(Color c,float ax,float ay,float az,float bx,float by,float bz,
     glVertex3f(ax,ay,az); glVertex3f(bx,by,bz); glVertex3f(cx,cy,cz); glVertex3f(dx,dy,dz);
     glEnd();
 }
-void cuboid(const Block& b, float rotation=0, Axis axis=Axis::X) {
-    const Color c=palette[static_cast<std::size_t>(b.tint)%palette.size()];
-    glPushMatrix();
-    glTranslatef(b.x,b.y+blockH*0.5f,b.z);
-    if (rotation!=0) glRotatef(rotation,axis==Axis::X?0.0f:1.0f,0,axis==Axis::X?1.0f:0.0f);
-    const float x=b.w*0.5f, y=blockH*0.5f, z=b.d*0.5f;
-    quad3(tint(c,1.11f),-x,y,-z,x,y,-z,x,y,z,-x,y,z);
-    quad3(tint(c,0.57f),-x,-y,-z,-x,-y,z,x,-y,z,x,-y,-z);
-    quad3(tint(c,0.82f),-x,-y,z,x,-y,z,x,y,z,-x,y,z);
-    quad3(tint(c,0.68f),x,-y,-z,x,y,-z,x,y,z,x,-y,z);
-    quad3(tint(c,0.62f),-x,-y,-z,-x,y,-z,-x,y,z,-x,-y,z);
-    quad3(tint(c,0.74f),-x,-y,-z,x,-y,-z,x,y,-z,-x,y,-z);
-    shade(fade(tint(c,1.22f),0.54f));
-    glBegin(GL_LINE_LOOP);
-    glVertex3f(-x,y+0.001f,-z); glVertex3f(x,y+0.001f,-z);
-    glVertex3f(x,y+0.001f,z); glVertex3f(-x,y+0.001f,z);
+struct BlockStyle {
+    Color bottom, top;
+    float height = blockH;
+    bool outline = true;
+};
+void blockSide(const BlockStyle& style,float light,float ax,float az,float bx,float bz) {
+    const float y=style.height*0.5f;
+    glBegin(GL_QUADS);
+    shade(tint(style.bottom,light));
+    glVertex3f(ax,-y,az); glVertex3f(bx,-y,bz);
+    shade(tint(style.top,light));
+    glVertex3f(bx,y,bz); glVertex3f(ax,y,az);
     glEnd();
+}
+void cuboid(const Block& b,const BlockStyle& style,float rotation=0,Axis axis=Axis::X) {
+    glPushMatrix();
+    glTranslatef(b.x,b.y+style.height*0.5f,b.z);
+    if (rotation!=0) glRotatef(rotation,axis==Axis::X?0.0f:1.0f,0,axis==Axis::X?1.0f:0.0f);
+    const float x=b.w*0.5f, y=style.height*0.5f, z=b.d*0.5f;
+    const Color top=style.outline?tint(style.top,1.11f):mix(style.top,paper,0.12f);
+    quad3(top,-x,y,-z,x,y,-z,x,y,z,-x,y,z);
+    quad3(tint(style.bottom,0.57f),-x,-y,-z,-x,-y,z,x,-y,z,x,-y,-z);
+    blockSide(style,0.82f,-x,z,x,z);
+    blockSide(style,0.68f,x,-z,x,z);
+    blockSide(style,0.62f,-x,z,-x,-z);
+    blockSide(style,0.74f,-x,-z,x,-z);
+    if(style.outline) {
+        shade(fade(tint(style.top,1.22f),0.54f));
+        glBegin(GL_LINE_LOOP);
+        glVertex3f(-x,y+0.001f,-z); glVertex3f(x,y+0.001f,-z);
+        glVertex3f(x,y+0.001f,z); glVertex3f(-x,y+0.001f,z);
+        glEnd();
+    }
     glPopMatrix();
 }
-void footprint(const Block& b) {
+void cuboid(const Block& b,float rotation=0,Axis axis=Axis::X) {
+    const auto index=static_cast<std::size_t>(b.tint)%palette.size();
+    const Color top=palette[index];
+    const Color bottom=b.tint==0?tint(top,0.90f):palette[(index+palette.size()-1)%palette.size()];
+    cuboid(b,{bottom,top},rotation,axis);
+}
+void footprint(const Block& b, Color edge) {
     const float x=b.w*0.5f,z=b.d*0.5f,y=b.y+blockH+0.009f;
-    shade(fade(paper,0.54f));
+    shade(edge);
     glBegin(GL_LINE_LOOP);
     glVertex3f(b.x-x,y,b.z-z); glVertex3f(b.x+x,y,b.z-z);
     glVertex3f(b.x+x,y,b.z+z); glVertex3f(b.x-x,y,b.z+z);
@@ -183,38 +219,81 @@ void beginScene(float x,float y,float size,float camera,float time,bool preview)
     glTranslatef(x,y,0);
     glScalef(size,-size,size);
     glRotatef(35.264f,1,0,0);
-    glRotatef(-45.0f+(preview?3.0f*std::sin(time*0.45f):0.0f),0,1,0);
+    glRotatef(-45.0f+(preview?5.5f*std::sin(time*previewTurnRate):0.0f),0,1,0);
     glTranslatef(0,-camera,0);
     glEnable(GL_DEPTH_TEST);
 }
 void endScene() { glDisable(GL_DEPTH_TEST); glPopMatrix(); }
-void towerPreview(float time) {
-    glow(875,504,348,107,color(0xA393E4,0.21f));
-    beginScene(872,460,58,0,time,true);
+float previewOffset(const Round& round) {
+    const auto& top=round.tower.back();
+    return (round.axis==Axis::X?round.active.x-top.x:round.active.z-top.z)*round.heading;
+}
+void previewBlock(Block block,float opacity,float rotation=0,Axis axis=Axis::X) {
+    if(opacity<=0) return;
+    const Color bottom=mix(mint,paper,0.22f*(block.tint-1)/previewLayers);
+    const Color top=mix(mint,paper,0.22f*block.tint/previewLayers);
+    cuboid(block,{fade(bottom,opacity),fade(top,opacity),blockH,false},rotation,axis);
+}
+void towerPreview(const Round& round,float time,float hold) {
+    glow(homeArtX,463,318,132,fade(violet,0.16f));
+    beginScene(homeArtX,447,56,0,time,true);
     baseGrid();
-    constexpr std::array<float,10> widths{3.9f,3.8f,3.5f,3.3f,3.16f,2.94f,2.72f,2.72f,2.43f,2.43f};
-    for (std::size_t i=0;i<widths.size();++i)
-        cuboid({0.17f*std::sin(static_cast<float>(i)*0.81f),0.14f*std::cos(static_cast<float>(i)*0.92f),widths[i],
-                widths[i]+0.10f,static_cast<float>(i)*blockH,static_cast<int>(i)});
-    cuboid({0.86f*std::sin(time*1.6f),-0.08f,2.43f,2.53f,10*blockH+0.13f,10});
+    glClipPlane(GL_CLIP_PLANE0,floorPlane);
+    constexpr std::array<float,3> widths{baseSize+1.4f,baseSize+0.7f,baseSize};
+    constexpr std::array<Color,4> tones{mix(logoBase,violet,0.78f),violet,mix(violet,mint,0.58f),mint};
+    for(std::size_t i=0;i<widths.size();++i)
+        cuboid({0,0,widths[i],widths[i],i*blockH},{tones[i],tones[i+1],blockH,false});
+
+    // Align the support with the logo, then lower the finished stack into it.
+    const float reset=std::clamp((hold-previewHold)/previewResetTime,0.0f,1.0f);
+    const float sink=previewLayers*blockH*reset*reset*(3-2*reset);
+    glTranslatef(0,blockH*(widths.size()-1)-sink,0);
+    for(std::size_t i=1;i<round.tower.size();++i)
+        previewBlock(round.tower[i],1);
+    if(round.score<previewLayers) {
+        const float entrance=std::clamp((round.range()+previewOffset(round))*1.6f,0.0f,1.0f);
+        previewBlock(round.active,entrance);
+    }
+    glEnable(GL_CLIP_PLANE0);
+    for(const auto& fragment:round.fragments)
+        previewBlock(fragment.block,1,fragment.rotation,fragment.axis);
+    glDisable(GL_CLIP_PLANE0);
     endScene();
 }
 void towerLive(const Round& r) {
-    glow(835,508,332,122,color(0xA393E4,0.19f));
-    beginScene(836,449,57,r.camera,0,false);
+    glow(arenaX,535,365,135,color(0xA393E4,0.19f));
+    beginScene(arenaX,465,66,r.camera,0,false);
     if (r.camera<4.3f) baseGrid();
     for (const auto& b:r.tower) if (b.y>=r.camera-6.0f) cuboid(b);
     if (r.alive) {
-        footprint(r.tower.back());
+        const float flash = r.lastLand==Land::Perfect ? std::max(0.0f,r.notice-0.65f)*4 : 0;
+        footprint(r.tower.back(),fade(paper,0.78f+0.22f*flash));
         cuboid(r.active);
+        if(flash>0) footprint(r.tower.back(),fade(mint,flash));
     }
+    glClipPlane(GL_CLIP_PLANE0,floorPlane);
+    glEnable(GL_CLIP_PLANE0);
     for (const auto& f:r.fragments) cuboid(f.block,f.rotation,f.axis);
+    glDisable(GL_CLIP_PLANE0);
     endScene();
 }
-void brandMark(float x,float y) {
-    roundRect(x,y,36,36,9,color(0x263149));
+void brandMark(float x,float y,float size) {
+    const float scale=size/36;
+    roundRect(x,y,size,size,9*scale,logoBase);
     for(int i=0;i<3;++i)
-        roundRect(x+8+i*2.0f,y+22-i*6.0f,20-i*4.0f,4,1.6f,i==2?mint:violet);
+        roundRect(x+(8+i*2.0f)*scale,y+(22-i*6.0f)*scale,
+                  (20-i*4.0f)*scale,4*scale,1.6f*scale,i==2?mint:violet);
+}
+void crown(float x,float y) {
+    shade(mint);
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(x+9,y+8);
+    glVertex2f(x+2,y+8); glVertex2f(x,y+1);
+    glVertex2f(x+5,y+4); glVertex2f(x+9,y);
+    glVertex2f(x+13,y+4); glVertex2f(x+18,y+1);
+    glVertex2f(x+16,y+8);
+    glEnd();
+    rect(x+2,y+9,14,2,mint);
 }
 std::string trim(std::string s) {
     constexpr auto whitespace = " \t\r\n";
@@ -239,6 +318,7 @@ std::filesystem::path scoreLocation(const std::filesystem::path& exeFolder) {
 
 App::App(const std::filesystem::path& creditsFile,const std::filesystem::path& scoreFile)
     : creditsFile_(creditsFile),scoreFile_(scoreFile) {
+    resetPreview();
     loadCredits();
     std::ifstream file(scoreFile_);
     int stored=0;
@@ -303,7 +383,7 @@ void App::click(int x,int y) {
             return;
         }
     }
-    if(screen_==Screen::Playing && mouseX_>=460 && mouseY_>=93 && mouseY_<650) drop();
+    if(screen_==Screen::Playing && mouseX_>=arenaLeft && mouseY_>=80) drop();
 }
 void App::start() {
     round_.reset();
@@ -358,132 +438,130 @@ void App::key(unsigned char input) {
 }
 void App::update(float dt) {
     dt=std::clamp(dt,0.0f,0.05f);
-    time_=std::fmod(time_+dt,1000.0f);
-    if(screen_==Screen::Playing||screen_==Screen::Result) round_.update(dt);
+    time_=std::fmod(time_+dt,2*pi/previewTurnRate);
+    if(screen_==Screen::Menu) updatePreview(dt);
+    else if(screen_==Screen::Playing||screen_==Screen::Result) round_.update(dt);
+}
+
+void App::resetPreview() {
+    preview_.reset();
+    previewWait_=0;
+}
+void App::updatePreview(float dt) {
+    preview_.update(dt);
+    if(preview_.score==previewLayers) {
+        previewWait_+=dt;
+        if(previewWait_>=previewHold+previewResetTime) resetPreview();
+        return;
+    }
+    // Drop just before alignment so the real round logic trims the overhang.
+    if(previewOffset(preview_)>=-0.72f) preview_.drop();
 }
 
 void App::button(float x,float y,float w,float h,Action a,const std::string& s,
                  bool primary,const std::string& hotkey) {
     buttons_.push_back({x,y,w,h,a});
     const bool hover=mouseX_>=x&&mouseX_<=x+w&&mouseY_>=y&&mouseY_<=y+h;
-    if(primary) {
-        roundRect(x,y,w,h,12,hover?color(0xA0F5DF):mint);
-        text(x+19,y+h*0.5f+6,s,17,ink,true);
-    } else {
-        card(x,y,w,h,12,hover?color(0x313A55):color(0x222A42),hover?color(0x7985A9):border);
-        text(x+19,y+h*0.5f+6,s,16,paper,true);
-    }
+    const float depth=primary?8:6;
+    const float middle=y+(h-depth)*0.5f;
+    const Color secondary=menuTheme(screen_)?tint(violet,0.48f):color(0x222A42);
+    const Color face=primary?mint:secondary;
+    blockButton(x,y,w,h,depth,tint(face,hover?1.16f:1.0f));
+    const Color foreground=primary?ink:paper;
+    text(x+19,middle+6,s,primary?18:16,foreground,true);
     if(!hotkey.empty()) {
-        const float capW=std::max(28.0f,textWidth(hotkey,10,true)+15);
-        const Color cap=primary?color(0x183738,0.14f):color(0x455070,0.66f);
-        roundRect(x+w-capW-13,y+(h-23)/2,capW,23,6,cap);
-        center(x+w-capW*0.5f-13,y+h*0.5f+4,hotkey,10,primary?ink:muted,true);
+        const float capW=std::max(28.0f,textWidth(hotkey,11,true)+15);
+        const float capX=x+w-capW-13;
+        rect(capX,middle-11.5f,capW,23,tint(face,primary?0.86f:0.68f));
+        center(capX+capW*0.5f,middle+4,hotkey,11,foreground,true);
     }
-}
-void App::header() {
-    brandMark(54,26);
-    text(103,50,"TUMPUK",20,paper,true,1.5f);
-    rect(54,86,1172,1,border);
-    if(screen_==Screen::Playing) button(1090,23,136,45,Action::Pause,"Jeda",false,"ESC");
-    else {
-        card(1082,29,144,30,8,color(0x1C273B));
-        roundRect(1094,40,7,7,3.5f,mint);
-        text(1109,49,"PC / OFFLINE",11,muted,true,1.25f);
-    }
-}
-void App::footer() {
-    rect(54,658,1172,1,border);
-    label(54,688,"PROYEK KOMPUTER GRAFIS");
-    const std::string_view end="3D ISOMETRIK  /  VERSI 1.0";
-    text(1226-textWidth(end,11,true,1.25f),688,end,11,dim,true,1.25f);
 }
 void App::menu() {
-    towerPreview(time_);
-    roundRect(54,154,34,3,1.5f,mint);
-    label(99,161,"GAME ARCADE 3D",mint);
-    text(48,254,"TUMPUK",94,paper,true,-2);
-    text(56,302,"Susun setinggi mungkin.",25,violet,true);
-    text(56,345,"Jatuhkan balok saat sejajar. Bagian yang",17,muted);
-    text(56,371,"meleset akan terpotong dan jatuh.",17,muted);
-    button(54,410,334,53,Action::Play,"Mulai",true,"ENTER");
-    button(54,476,334,49,Action::Credits,"Credits",false,"C");
-    button(54,536,334,49,Action::Exit,"Keluar",false,"ESC");
-    center(872,616,"SATU BALOK. SATU KESEMPATAN.",12,muted,true);
+    towerPreview(preview_,time_,previewWait_);
+    brandMark(homeMargin,48,44);
+    text(homeMargin,290,"Tumpuk",72,paper,true);
+    text(homeMargin,333,"Jatuhkan balok saat sejajar.",21,muted);
+    constexpr float width=336, gap=16, secondary=(width-gap)/2;
+    button(homeMargin,376,width,56,Action::Play,"Mulai",true,"ENTER");
+    button(homeMargin,448,secondary,44,Action::Credits,"Kredit",false,"C");
+    button(homeMargin+secondary+gap,448,secondary,44,Action::Exit,"Keluar",false,"ESC");
 }
 void App::gameplay() {
     towerLive(round_);
-    label(54,133,"RUN BERJALAN",mint);
-    card(54,156,332,204,18,color(0x202942));
-    label(76,190,"SKOR");
-    text(73,270,std::to_string(round_.score),79,paper,true);
-    rect(76,294,288,1,border);
-    label(76,330,"REKOR",muted);
-    const auto score=std::to_string(best_);
-    text(364-textWidth(score,23,true),331,score,23,mint,true);
-    label(54,405,"KONTROL");
-    keycap(54,425,65,"SPACE");
-    text(133,445,"Jatuhkan balok",15,paper);
-    keycap(54,461,65,"KLIK");
-    text(133,481,"Atau klik arena",15,muted);
-    keycap(54,497,65,"P / ESC");
-    text(133,517,"Jeda permainan",15,muted);
-    if(round_.alive) {
-        const bool perfect=round_.lastLand==Land::Perfect;
-        if(round_.notice>0) {
-            const std::string message=perfect
-                ? (round_.combo>=2 ? "PAS!  COMBO x"+std::to_string(round_.combo) : "PAS!")
-                : "TERPOTONG " + std::to_string(static_cast<int>(std::round(round_.cutPercent))) + "%";
-            const float alpha=std::min(1.0f,round_.notice*3.3f);
-            const float w=textWidth(message,15,true)+34;
-            roundRect(836-w/2,113,w,34,10,color(0x242B46,alpha));
-            center(836,136,message,15,fade(perfect?mint:blush,alpha),true);
-        } else {
-            center(836,136,round_.score==0?"TUNGGU HINGGA BALOK SEJAJAR":
-                   (round_.axis==Axis::X?"BALOK BERGERAK DI SUMBU X":"BALOK BERGERAK DI SUMBU Z"),12,muted,true);
-        }
+    if(screen_==Screen::Pause) {
+        pause();
+        return;
     }
-    if(screen_==Screen::Pause||screen_==Screen::Result) modal();
+    if(screen_==Screen::Result && round_.resultTime>=0.45f) {
+        result();
+        return;
+    }
+    text(homeMargin,128,"Skor",18,muted,true);
+    text(homeMargin,204,std::to_string(round_.score),76,paper,true);
+    text(homeMargin,237,"Rekor " + std::to_string(best_),19,muted);
+    if(screen_==Screen::Playing) {
+        button(screenW-homeMargin-132,48,132,46,Action::Pause,"Jeda",false,"ESC");
+        if(round_.score==0)
+            center(arenaX,688,"Space atau klik arena untuk menjatuhkan balok",20,paper);
+        if(round_.notice>0) landingFeedback();
+    }
 }
-void App::modal() {
-    if(screen_==Screen::Result && round_.resultTime<0.45f) return;
-    buttons_.clear();
-    rect(0,0,screenW,screenH,color(0x080D1B,0.77f));
-    card(405,177,470,366,22,color(0x1B243A),color(0x576487));
-    const bool result=screen_==Screen::Result;
-    center(640,219,result?(round_.score>initialBest_?"REKOR BARU":"RUN SELESAI"):"JEDA",13,mint,true);
-    center(640,280,result?"Menara berhenti":"Permainan dijeda",35,paper,true);
-    if(result) {
-        center(640,326,"Skor " + std::to_string(round_.score) + "  /  Rekor " +
-               std::to_string(best_),21,violet,true);
-        center(640,356,"Combo terbaik: "+std::to_string(round_.longestCombo),15,muted);
-    } else {
-        center(640,328,"Balok berhenti sampai kamu lanjut.",17,muted);
-    }
-    button(458,389,364,52,result?Action::Retry:Action::Resume,result?"Coba lagi":"Lanjutkan",true,
-           result?"R":"ENTER");
-    button(458,456,364,50,Action::Home,"Menu utama",false,"M");
+void App::landingFeedback() {
+    const bool perfect = round_.lastLand==Land::Perfect;
+    std::string message = perfect ? "Pas!" :
+        "Terpotong " + std::to_string(static_cast<int>(std::round(round_.cutPercent))) + "%";
+    if(perfect && round_.combo>=2) message += "  x" + std::to_string(round_.combo);
+    const float alpha = std::min(1.0f,round_.notice*3.3f);
+    const float y = 296-std::min(round_.tower.back().y-round_.camera,1.7f)*48;
+    center(arenaX+1,y+1,message,23,fade(ink,alpha),true);
+    center(arenaX,y,message,23,fade(perfect?mint:blush,alpha),true);
+}
+void App::pause() {
+    rect(0,0,screenW,screenH,color(0x080D1B,0.26f));
+    text(homeMargin,292,"Jeda",58,paper,true);
+    button(homeMargin,335,272,56,Action::Resume,"Lanjutkan",true,"ENTER");
+    button(homeMargin,407,272,46,Action::Home,"Menu utama",false,"M");
+}
+void App::result() {
+    const bool newRecord=round_.score>initialBest_;
+    text(homeMargin,232,"Permainan selesai",34,paper,true);
+    text(homeMargin,274,newRecord?"Rekor baru":"Skor akhir",18,mint,true);
+    text(homeMargin,362,std::to_string(round_.score),88,paper,true);
+    if(!newRecord) text(homeMargin,403,"Rekor " + std::to_string(best_),19,muted);
+    text(homeMargin,newRecord?403:432,"Combo terbaik " + std::to_string(round_.longestCombo),17,muted);
+    button(homeMargin,476,272,56,Action::Retry,"Coba lagi",true,"R");
+    button(homeMargin,548,272,46,Action::Home,"Menu utama",false,"M");
 }
 void App::credits() {
-    label(54,140,"TIM PENGEMBANG",mint);
-    text(50,220,"Credits",64,paper,true);
-    text(54,260,"TUMPUK  /  Proyek Komputer Grafis",17,muted);
-    card(54,291,1172,266,17,color(0x1A2137));
-    label(80,327,"NAMA",violet);
-    label(829,327,"NIM",violet);
-    rect(80,341,1118,1,border);
-    for(std::size_t i=0;i<5&&creditsPage_*5+i<people_.size();++i) {
-        const auto& p=people_[creditsPage_*5+i];
-        const float y=369+static_cast<float>(i)*36.0f;
-        text(80,y,fitText(p.name,18,710,true),18,paper,true);
-        text(829,y,fitText(p.nim,16,325),16,muted);
-        if(i<4 && creditsPage_*5+i+1<people_.size()) rect(80,y+12,1118,1,fade(border,0.70f));
+    constexpr std::size_t perPage=5;
+    constexpr float tableWidth=900, nameX=homeMargin+20, nimX=homeMargin+590;
+    constexpr float tableY=248, headerHeight=46, rowHeight=49;
+    const std::size_t first=creditsPage_*perPage;
+    const std::size_t count=std::min(perPage,people_.size()-first);
+    brandMark(homeMargin,48,44);
+    text(homeMargin,170,"Kredit",58,paper,true);
+    text(homeMargin,210,"Nama Tim: Ketuanya Ijal ajah",21,muted);
+    rect(homeMargin,tableY,tableWidth,headerHeight,tint(logoBase,0.95f));
+    rect(homeMargin,tableY,tableWidth,2,tint(violet,0.52f));
+    text(nameX,tableY+29,"Nama",16,violet,true);
+    text(nimX,tableY+29,"NIM",16,violet,true);
+    for(std::size_t i=0;i<count;++i) {
+        const auto& p=people_[first+i];
+        const float y=tableY+headerHeight+i*rowHeight;
+        rect(homeMargin,y,tableWidth,rowHeight,tint(logoBase,i%2==0?0.74f:0.83f));
+        rect(nameX,y+rowHeight-1,tableWidth-40,1,fade(violet,0.14f));
+        const auto name=fitText(p.name,20,nimX-nameX-48,true);
+        text(nameX,y+31,name,20,paper,true);
+        if(p.nim=="245150207111063") crown(nameX+textWidth(name,20,true)+10,y+17);
+        text(nimX,y+31,fitText(p.nim,19,tableWidth-(nimX-homeMargin)-20),19,muted);
     }
-    button(54,580,244,48,Action::Home,"Menu utama",false,"ESC");
-    const std::size_t pages=(people_.size()+4)/5;
+    const float controlsY=tableY+headerHeight+count*rowHeight+25;
+    button(homeMargin,controlsY,220,48,Action::Home,"Menu utama",false,"ESC");
+    const std::size_t pages=(people_.size()+perPage-1)/perPage;
     if(pages>1) {
-        center(918,610,std::to_string(creditsPage_+1)+" / "+std::to_string(pages),14,muted,true);
-        if(creditsPage_>0) button(730,580,142,48,Action::Previous,"Sebelum",false,"A");
-        if(creditsPage_+1<pages) button(964,580,168,48,Action::Next,"Berikut",false,"D");
+        center(740,controlsY+29,std::to_string(creditsPage_+1)+" / "+std::to_string(pages),16,muted,true);
+        if(creditsPage_>0) button(540,controlsY,142,48,Action::Previous,"Sebelum",false,"A");
+        if(creditsPage_+1<pages) button(816,controlsY,148,48,Action::Next,"Berikut",false,"D");
     }
 }
 void App::render() {
@@ -494,9 +572,7 @@ void App::render() {
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
     glOrtho(0,screenW,screenH,0,-6000,6000);
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
-    gradient();
-    header();
-    footer();
+    gradient(menuTheme(screen_));
     if(screen_==Screen::Menu) menu();
     else if(screen_==Screen::Credits) credits();
     else gameplay();

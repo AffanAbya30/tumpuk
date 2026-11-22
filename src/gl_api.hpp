@@ -21,10 +21,11 @@ inline constexpr GLenum GL_COLOR_BUFFER_BIT=0x4000, GL_DEPTH_BUFFER_BIT=0x0100,
  GL_LINE_LOOP=0x0002, GL_LINES=0x0001, GL_LINEAR=0x2601,
  GL_TEXTURE_MIN_FILTER=0x2801, GL_TEXTURE_MAG_FILTER=0x2800, GL_ALPHA=0x1906,
  GL_UNSIGNED_BYTE=0x1401, GL_RGBA=0x1908, GL_UNPACK_ALIGNMENT=0x0CF5,
- GL_NO_ERROR=0, GL_VERSION=0x1F02;
+ GL_NO_ERROR=0, GL_VERSION=0x1F02, GL_CLIP_PLANE0=0x3000;
 extern "C" {
 void glClearColor(GLfloat,GLfloat,GLfloat,GLfloat); void glClear(GLbitfield);
 void glEnable(GLenum); void glDisable(GLenum); void glBlendFunc(GLenum,GLenum);
+void glClipPlane(GLenum,const GLdouble*);
 void glDepthFunc(GLenum); void glViewport(GLint,GLint,GLsizei,GLsizei);
 void glMatrixMode(GLenum); void glLoadIdentity();
 void glOrtho(GLdouble,GLdouble,GLdouble,GLdouble,GLdouble,GLdouble);
