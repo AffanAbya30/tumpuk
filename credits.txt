@@ -1,3 +1,6 @@
 # Format: Nama lengkap | NIM
 # Tambahkan satu baris per anggota. Jangan hapus tanda pemisah |.
+Faizal Reza Abdillah | 245150207111063
+Ozora Nathalnael Purba | 245150207111102
 Affan Abyarahman | 245150207111020
+Neval Pradipta Harimurti | 245150207111065
