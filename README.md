@@ -1,68 +1,67 @@
-# TUMPUK
+# Tumpuk
 
-TUMPUK adalah game arcade PC 3D isometrik. Jatuhkan balok saat sejajar dengan balok di bawahnya. Bagian yang meleset terpotong dan jatuh; bagian yang tersisa menjadi dasar balok berikutnya. Run berakhir jika tidak ada bagian yang bertumpuk. Mekanik terinspirasi dari Stack (Ketchapp); judul, kode, geometri, dan antarmuka TUMPUK dibuat untuk proyek ini.
+Tumpuk adalah gim arkade 3D untuk PC yang dikembangkan sebagai proyek akhir mata kuliah Komputer Grafis. Kami memilih mekanik menyusun balok karena aturannya mudah dipahami dan memberi ruang untuk menerapkan materi yang telah dipelajari, seperti pemodelan 3D, transformasi, proyeksi ortografik, animasi, dan interaksi pengguna.
 
-![Menu TUMPUK](preview/menu.png)
+Jatuhkan balok saat sejajar dengan balok di bawahnya. Jika penempatannya sedikit meleset, bagian yang tidak bertumpuk akan terpotong dan jatuh. Bagian yang tersisa menjadi pijakan untuk balok berikutnya. Permainan berakhir saat kedua balok sama sekali tidak bertumpuk.
 
-## Jalankan di Windows
+Pratinjau menu Tumpuk dari versi awal
 
-ZIP ini memuat source code dan proyek build. Untuk membuat executable pertama kali diperlukan Visual Studio 2022 dengan workload **Desktop development with C++** (MSVC x64 dan Windows SDK).
+## Cara Main
 
-1. Ekstrak seluruh ZIP ke satu folder.
-2. Klik dua kali `Build-Windows.bat`.
-3. Setelah muncul pesan berhasil, buka `dist\Tumpuk\Tumpuk.exe`.
-
-Alternatif: buka `Tumpuk.sln` di Visual Studio 2022, pilih **Release** dan **x64**, lalu **Build > Build Solution**. Jalankan `dist\Release\Tumpuk.exe` atau tekan **Ctrl+F5**.
-
-Untuk mengumpulkan build Windows, sertakan `Tumpuk.exe`, `credits.txt`, dan `LICENSE-fonts.txt` dari folder hasil build. Setelah dikompilasi, build Windows utama hanya memakai komponen OpenGL dan sistem bawaan Windows. PC pemain tidak memerlukan Visual Studio, internet, GLEW, atau DLL freeglut.
-
-## Credits kelompok
-
-Edit **`credits.txt` yang satu folder dengan executable**. Satu baris per anggota, dengan format `Nama lengkap | NIM`. Saat ini Affan sudah tercantum; tambahkan seluruh anggota sebelum mengumpulkan. Menu **Credits** dapat dibuka dari menu utama atau tombol **C**. File dibaca ulang setiap kali Credits dibuka. Jika build baru, file dari folder proyek akan disalin; build ulang tidak menimpa file Credits yang sudah ada di folder hasil.
-
-## Cara main
-
-| Input | Aksi |
+| Kontrol | Aksi |
 |---|---|
-| Enter atau klik **Mulai** | Memulai run |
-| Space atau klik area arena | Menjatuhkan balok |
-| P, Esc, atau klik **Jeda** | Menjeda permainan |
-| Enter saat dijeda | Melanjutkan |
-| R atau klik **Coba lagi** | Mengulang setelah run selesai |
-| C dari menu utama | Membuka Credits |
+| Enter atau klik Mulai | Mulai permainan |
+| Space atau klik arena | Jatuhkan balok |
+| P, Esc, atau klik Jeda | Jeda permainan |
+| Enter atau klik Lanjutkan | Lanjutkan permainan |
+| R atau klik Coba lagi | Mulai ulang setelah permainan selesai |
+| C atau klik Kredit dari menu utama | Lihat anggota kelompok |
 
-Balok bergerak bergantian pada sumbu X dan Z. Jika penempatan cukup dekat dengan pusat, balok terkunci pas dan ukurannya tidak berkurang. Beberapa penempatan pas berturut-turut membentuk combo. Kecepatan bertambah seiring skor. Rekor disimpan lokal di `%LOCALAPPDATA%\Tumpuk\score.txt`.
+Balok bergerak bergantian pada sumbu X dan Z. Penempatan yang cukup dekat dengan pusat akan terkunci pas. Beberapa penempatan pas berturut-turut menghasilkan combo, dan balok bergerak semakin cepat seiring kenaikan skor.
 
-## Pemetaan ketentuan tugas
+## Menjalankan Gim
 
-| Ketentuan | Implementasi |
+### Windows
+
+Untuk melakukan build dari kode sumber, siapkan Visual Studio 2022 dengan workload Desktop development with C++, termasuk MSVC x64 dan Windows SDK.
+
+1. Clone repository atau ekstrak ZIP ke satu folder.
+2. Jalankan Build-Windows.bat.
+3. Buka dist\Tumpuk\Tumpuk.exe setelah build berhasil.
+
+Alternatifnya, buka Tumpuk.sln di Visual Studio, pilih konfigurasi Release dan x64, lalu pilih Build > Build Solution. Executable akan tersedia di dist\Release\Tumpuk.exe.
+
+Untuk membagikan build Windows, sertakan Tumpuk.exe, credits.txt, dan LICENSE-fonts.txt dalam satu folder. Pemain dapat menjalankan build tersebut secara offline tanpa memasang Visual Studio, GLEW, atau FreeGLUT.
+
+### Linux
+
+Siapkan compiler yang mendukung C++17, CMake, alat build seperti Make atau Ninja, serta paket pengembangan OpenGL dan FreeGLUT. Jalankan dari folder proyek:
+
+cmake -S . -B build-glut -DTUMPUK_FREEGLUT=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build-glut
+./build-glut/Tumpuk
+
+## Penerapan Komputer Grafis
+
+| Materi | Penerapan di Tumpuk |
 |---|---|
-| Interactive computer graphics | Keyboard dan mouse mengubah keadaan permainan serta tampilan balok secara langsung. |
-| Tujuan | Permainan arcade yang menguji ketepatan waktu. |
-| Tampilan | Balok 3D, proyeksi ortografik dengan sudut isometrik, serta antarmuka 2D. |
-| Platform | PC. Build utama memakai C++17 dan OpenGL Win32. Ada backend freeglut opsional. |
-| Credits | Menu Credits menampilkan nama dan NIM dari file lokal. |
-| Standalone dan offline | Semua balok, grid, dan UI digambar dari kode. Font tertanam. Rekor dan Credits memakai file lokal. |
+| Geometri 3D | Balok dibentuk dari enam bidang. Perbedaan warna dan gradasi antarsisi membantu menunjukkan kedalaman. |
+| Proyeksi dan kamera | Proyeksi ortografik dengan sudut isometrik menjaga skala balok. Kamera mengikuti tinggi menara, sementara antarmuka 2D tetap di koordinat layar. |
+| Perhitungan geometri | Saat balok dijatuhkan, gim menghitung irisan antara balok aktif dan penyangganya pada sumbu gerak. Irisan itu menentukan ukuran serta posisi balok berikutnya. |
+| Transformasi dan animasi | Potongan bergerak jatuh sambil berputar. Permukaan lantai menjadi batas visual, sehingga bagian potongan yang sudah melewatinya tidak lagi terlihat. |
+| Interaksi | Keyboard dan mouse mengontrol permainan. Tampilan menjaga rasio 16:9 saat ukuran jendela berubah dan menyesuaikan koordinat klik dengan area gambar. |
 
-## Teknik grafis dan logika
+Tumpuk ditulis dalam C++17 dan OpenGL, dengan backend Win32 untuk Windows dan FreeGLUT untuk Linux. Aturan permainan ada di src/game.hpp, sedangkan render dan antarmuka ada di src/app.cpp.
 
-- **Geometri 3D:** setiap balok digambar sebagai enam bidang. Warna bidang atas dan sisi dibedakan agar kedalamannya terlihat.
-- **Proyeksi:** sudut kamera tetap dan proyeksi ortografik menjaga skala balok. Kamera mengikuti menara; antarmuka tetap dalam koordinat layar.
-- **Pemotongan:** ambil irisan interval balok aktif dan balok pendukung pada sumbu gerak. Panjang irisan menjadi ukuran baru. Selisihnya menjadi potongan yang diberi animasi jatuh dan rotasi.
-- **Waktu dan input:** pergerakan, animasi, dan respons kontrol dihitung terpisah dari fungsi gambar. Saat jendela diubah ukurannya, rasio 16:9 dan koordinat mouse tetap sesuai.
-- **Berkas:** `src/game.hpp` untuk aturan permainan; `src/app.cpp` untuk render dan layar; `src/main_win32.cpp` dan `src/main_freeglut.cpp` untuk jendela dan input.
+## Desain Antarmuka
 
-## Backend freeglut (opsional)
+Menu utama menempatkan judul dan tombol di kiri, serta menara isometrik di kanan. Menara itu berangkat dari bentuk logo tiga lapis, lalu mendemonstrasikan mekanik pemotongan balok yang digunakan di arena. Font Outfit, palet mint dan lavender, serta tombol bersudut 90° menyatukan tampilan menu, Kredit, arena, jeda, dan hasil.
 
-Jika ingin memakai freeglut untuk demonstrasi kelas, siapkan CMake, compiler C++17, dan paket pengembangan OpenGL/freeglut. Dari folder proyek:
+## Kredit
 
-```text
-cmake -S . -B build-glut -DTUMPUK_FREEGLUT=ON
-cmake --build build-glut --config Release
-```
+Nama tim: Ketuanya Ijal ajah
 
-Jika freeglut dipasang melalui vcpkg, tambahkan `-DCMAKE_TOOLCHAIN_FILE=path/ke/vcpkg.cmake` pada perintah konfigurasi. Bila freeglut ditautkan dinamis, sertakan DLL yang cocok dengan arsitektur executable. Untuk pengumpulan di Windows, jalur `Build-Windows.bat` di atas lebih sederhana karena tidak memerlukan DLL tersebut.
-
-## Pemeriksaan
-
-Logika dan render bersama sudah diuji di Linux dengan Mesa OpenGL: penempatan pas, combo, pemotongan X/Z, run selesai, jeda, retry, input mouse setelah resize, Credits, dan rekor setelah app dibuka ulang. Screenshot ada di `preview/`. Build Windows belum dijalankan di lingkungan pengujian ini. Jalankan build di PC Windows, lalu cek menu Credits dan coba satu run sebelum mengumpulkan.
+- Faizal Reza Abdillah — ketua kelompok
+- Ozora Nathalnael Purba
+- Affan Abyarahman
+- Neval Pradipta Harimurti
