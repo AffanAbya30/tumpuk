@@ -4,7 +4,7 @@ Tumpuk adalah gim arkade 3D untuk PC yang dikembangkan sebagai proyek akhir mata
 
 Jatuhkan balok saat sejajar dengan balok di bawahnya. Jika penempatannya sedikit meleset, bagian yang tidak bertumpuk akan terpotong dan jatuh. Bagian yang tersisa menjadi pijakan untuk balok berikutnya. Permainan berakhir saat kedua balok sama sekali tidak bertumpuk.
 
-Pratinjau menu Tumpuk dari versi awal
+<img width="1888" height="1111" alt="261123_07h50m59s_screenshot" src="https://github.com/user-attachments/assets/f7a27a66-37fd-4fc9-8988-7d71b28609b8" />
 
 ## Cara Main
 
